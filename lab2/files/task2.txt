@@ -1,0 +1,5 @@
+a and b
+a and c 
+(not c or a) and (c or a) and (a or b or n)
+----
+(c or g) and (a or v)

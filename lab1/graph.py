@@ -25,6 +25,9 @@ class Vertex:
         self.solved = False
         self.childs = {}
         self.parents = {}
+        
+    def __repr__(self):
+        return self.name
 
 class Graph:
     """Класс отвечающий за работу с графом"""
@@ -127,6 +130,19 @@ class Graph:
                         solved_vertex.append(v)            
         for v in solved_vertex:
             self.propagate_solved(v)
+            
+    def check_solved(self, vertex):
+        childs = vertex.childs
+        res = False
+        for rule_c in childs:
+            solved = True
+            for c in childs[rule_c]:
+                if not c.solved:
+                    solved = False
+            if solved:
+                res = solved
+                break
+        return res
 
     # поиск по графу 
     # Атрибуты: 
@@ -142,29 +158,60 @@ class Graph:
             start = self.data
         start = [self.name_vertex_dict[name] for name in start]
     
-        vertex_arr = collections.deque(start) # дек, в который добавляются очередные вершины  
-        while len(vertex_arr) > 0:
+        open_vertices = collections.deque(start) # дек, в который добавляются очередные вершины  
+        undefined_resolve_vertices = collections.deque()
+        closed = set()
+        while len(open_vertices) > 0:
             # извлекаем первую вершину
-            v = vertex_arr.popleft()
-            if v in visited:
-                continue
-            visited.add(v)
+            v = open_vertices.popleft()
+            # if v in visited:
+            #     continue
+            # visited.add(v)
 
             if v.name in self.data:
-                # если она в массиве данных, то она решена, оповещаем родительские вершины, что она решена
+                # если она в массиве данных, то она решена
                 v.solved = True
-                self.propagate_solved(v)
-
+            elif self.check_solved(v):
+                v.solved = True
+                
+            # if v.solved:
+            #     continue 
+            
+            adjoining_vertices = self.getChilds(v, from_data)
+            
+            if not from_data:
+                if len(adjoining_vertices) == 0:
+                    if not v.solved:
+                        closed.add(v)
+                else:
+                    undefined_resolve_vertices.appendleft(v)
+            
             if dfs: # если поиск в глубину, добавляем примыкающие к извлеченной вершине вершины в начало дека
-                vertex_arr = collections.deque(self.getChilds(v, from_data)) + vertex_arr
+                open_vertices = collections.deque(adjoining_vertices) + open_vertices
             else: # если поиск в ширину, добавляем примыкающие к извлеченной вершине вершины в конец дека
-                vertex_arr += self.getChilds(v, from_data)
+                open_vertices += adjoining_vertices
+                
+
+        if not from_data:
+            while len(undefined_resolve_vertices) > 0:
+                # извлекаем первую вершину
+                v = undefined_resolve_vertices.popleft()
+                if self.check_solved(v):
+                    v.solved = True    
+                else:
+                    if not v.solved:
+                        closed.add(v)
+        
+            closed = list(closed)  
+            print('Closed: ', closed)     
         
         res = True
         # Если все целевые вершины оказались решены, то ответ будет True, иначе False
         for vertex in self.targets:
             res = res and self.name_vertex_dict[vertex].solved
 
+        # for n in self.name_vertex_dict:
+        #     print(self.name_vertex_dict[n].name, self.name_vertex_dict[n].solved)
         
         if res:
             start = [self.name_vertex_dict[name] for name in self.targets]
