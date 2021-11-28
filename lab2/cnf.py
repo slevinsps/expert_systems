@@ -21,7 +21,6 @@ class LogicBase:
             self.my_stack.append(tmp)
         self.my_stack.append(final)
 
-        print(self.my_stack)
 
     def get_result(self):
         root = self.my_stack[-1]
@@ -39,7 +38,7 @@ class LogicBase:
 
     def merge_items(self, logic):
         reg0 = '(\d+)'
-        reg1 = 'neg\s+(\d+)'
+        reg1 = 'not\s+(\d+)'
         flag = False
         for i in range(len(self.my_stack)):
             target = self.my_stack[i]
@@ -76,19 +75,19 @@ class Ordering(LogicBase):
         reg = "\s+(and|or|imp|iff)\s+"
         if len(re.findall(reg,source)) < 2:
             return source
-        reg_and = "(neg\s+)?\S+\s+and\s+(neg\s+)?\S+"
+        reg_and = "(not\s+)?\S+\s+and\s+(not\s+)?\S+"
         m = re.search(reg_and, source)
         if m is not None:
             return re.sub(reg_and, "("+m.group(0)+")", source, count=1)
-        reg_or = "(neg\s+)?\S+\s+or\s+(neg\s+)?\S+"
+        reg_or = "(not\s+)?\S+\s+or\s+(not\s+)?\S+"
         m = re.search(reg_or, source)
         if m is not None:
             return re.sub(reg_or, "("+m.group(0)+")", source, count=1)
-        reg_imp = "(neg\s+)?\S+\s+imp\s+(neg\s+)?\S+"
+        reg_imp = "(not\s+)?\S+\s+imp\s+(not\s+)?\S+"
         m = re.search(reg_imp, source)
         if m is not None:
             return re.sub(reg_imp, "("+m.group(0)+")", source, count=1)
-        reg_iff = "(neg\s+)?\S+\s+iff\s+(neg\s+)?\S+"
+        reg_iff = "(not\s+)?\S+\s+iff\s+(not\s+)?\S+"
         m = re.search(reg_iff, source)
         if m is not None:
             return re.sub(reg_iff, "("+m.group(0)+")", source, count=1)
@@ -135,13 +134,13 @@ class ReplaceImp(LogicBase):
         if m is None:
             return None
         a, b = m.group(1), m.group(2)
-        if 'neg ' in a:
-            return a.replace('neg ','') + ' or ' + b
-        return 'neg ' + a + ' or ' + b
+        if 'not ' in a:
+            return a.replace('not ','') + ' or ' + b
+        return 'not ' + a + ' or ' + b
 
 class DeMorgan(LogicBase):
     def run(self):
-        reg = 'neg\s+(\d+)'
+        reg = 'not\s+(\d+)'
         flag = False
         final = len(self.my_stack) - 1
         for i in range(len(self.my_stack)):
@@ -165,14 +164,14 @@ class DeMorgan(LogicBase):
                 new_items.append('and')
             elif item == 'and':
                 new_items.append('or')
-            elif item == 'neg':
-                new_items.append('neg')
+            elif item == 'not':
+                new_items.append('not')
             elif len(item.strip()) > 0:
-                new_items.append('neg')
+                new_items.append('not')
                 new_items.append(item)
         for i in range(len(new_items)-1):
-            if new_items[i] == 'neg':
-                if new_items[i+1] == 'neg':
+            if new_items[i] == 'not':
+                if new_items[i+1] == 'not':
                     new_items[i] = ''
                     new_items[i+1] = ''
         return ' '.join([i for i in new_items if len(i)>0])
@@ -219,7 +218,7 @@ class Simplification(LogicBase):
             return target
         items = set(re.split('\s+and\s+', target))
         for item in list(items):
-            if ('neg '+ item) in items:
+            if ('not '+ item) in items:
                 return ''
             if re.match('\d+$',item) is None:
                 continue
@@ -236,7 +235,7 @@ class Simplification(LogicBase):
             return target
         items = set(re.split('\s+or\s+', target))
         for item in list(items):
-            if ('neg '+item) in items:
+            if ('not '+item) in items:
                 return ''
         return ' or '.join(list(items))
 
@@ -246,14 +245,12 @@ def merging(source):
     source.merge_items('and')
     return old != source.get_result()
 
-def run(input):
+def toCnf(input):
     all_strings = []
     zero = Ordering(input)
     while zero.run():
-        print('zero.get_result() ', zero.get_result())
         zero = Ordering(zero.get_result())
     merging(zero)
-    print('zero.get_result() after merging: ', zero.get_result())
 
     one = ReplaceIff(zero.get_result())
     one.run()
@@ -282,15 +279,14 @@ def run(input):
     five = Simplification(four.get_result())
     five.run()
     all_strings.append(five.get_result())
-    return all_strings
+    return all_strings[-1]
 
 
 if __name__ == "__main__":
     inputs = open('sample_input.txt','r').read().split('\n')
     output = open('output.txt','w')
     for input in inputs:
-        for item in run(input):
-            output.write(item)
-            output.write('\n')
+        output.write(toCnf(input))
+        output.write('\n')
         #output.write('\n')
     output.close()

@@ -1,0 +1,4 @@
+a and b
+not a or c 
+----
+c

@@ -1,4 +1,1 @@
-neg ((c or g) and (a or v or t))
-neg ((c or g) and (a or v or t))
-(neg c and neg g) or (neg a and neg v and neg t)
-(neg a or neg g) and (neg v or neg c) and (neg a or neg c) and (neg v or neg g) and (neg t or neg g) and (neg c or neg t)
+(neg v or neg c) and (neg t or neg g) and (neg v or neg g) and (neg a or neg c) and (neg a or neg g) and (neg c or neg t)
