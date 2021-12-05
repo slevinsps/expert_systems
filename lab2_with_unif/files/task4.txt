@@ -1,0 +1,6 @@
+not P{C_k}
+P{a} or P{b, a}
+not P{C_p}
+not P{C_bbb} or P{b, a}
+----
+P{z,C_bbb}

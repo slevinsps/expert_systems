@@ -1,0 +1,9 @@
+S{x} or M{x}
+not M{xx} or not L{xx, C_дождь}
+not S{xxx} or L{xxx, C_снег}
+not L{C_Эллен, y} or not L{C_Тонни, y}
+L{C_Эллен, yy} or L{C_Тонни, yy}
+L{C_Тонни, C_дождь}
+L{C_Тонни, C_снег}
+----
+M{xxxx} and not S{xxxx}

@@ -1,0 +1,5 @@
+C{a}
+not P{y} or U{x, y}
+not C{x} or not B{y} or not U{x, y}
+----
+not P{b} or not B{b}
