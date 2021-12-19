@@ -1,7 +1,6 @@
 import re
 import collections
 from copy import deepcopy
-from cnf import toCnf
 
 class SimpleExpression:
     def __init__(self, name, isNegative = False, params = []):
@@ -37,8 +36,10 @@ class SimpleExpression:
 class Resolution:
     def __init__(self):
         self.goalStatement = None
-        self.allDisjunctionArr = []
-           
+        self.expressions = []
+        self.facts = []
+        self.goal = []
+
     def getSimpleExpressions(self, string):
         res = []
         string = string.replace('(', '')
@@ -73,7 +74,6 @@ class Resolution:
                     continue
 
                 # print(line)
-                cnf = toCnf(line)
                 # print('cnf ', cnf)
                 self.allDisjunctionArr += self.getSimpleExpressions(cnf)
 

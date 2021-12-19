@@ -1,0 +1,7 @@
+not P_three{x} or P_one{x} or P_four{x, b}
+P_two{a}
+P_three{a}
+not P_four{a, y} or P_two{y}
+not P_two{x} or not P_one{x}
+----
+P_five{x} and P_two{x}

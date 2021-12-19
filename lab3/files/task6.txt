@@ -1,0 +1,4 @@
+P{a} and P{b} or P{b} or (not P{b})
+((P{a} and P{b} or P{b}) or P{b})
+----
+P{C_c} and P__{C_d}

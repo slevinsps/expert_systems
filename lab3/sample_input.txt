@@ -1,0 +1,1 @@
+neg ((c or g) and (a or v or t))
