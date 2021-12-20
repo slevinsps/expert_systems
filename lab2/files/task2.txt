@@ -1,5 +1,5 @@
-a and b
-a and c 
-(not c or a) and (c or a) and (a or b or n)
+S or M
+not (M and L)
+not S or L
 ----
-a or b
+M and not S

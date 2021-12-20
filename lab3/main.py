@@ -32,58 +32,81 @@ class SimpleExpression:
         return ret
 
 
+class Vertex:
+    def __init__(self, expression):
+        self.expression = expression
+        self.solved = False
+        self.childs = []
+        
+    def __repr__(self):
+        return str(self.expression)
 
-class Resolution:
+    def __str__(self):
+        return str(self.expression)
+    
+class SearchVars:
     def __init__(self):
         self.goalStatement = None
         self.expressions = []
         self.facts = []
         self.goal = []
 
-    def getSimpleExpressions(self, string):
-        res = []
-        string = string.replace('(', '')
-        string = string.replace(')', '')
-        for disjunctor in string.split('and'):
-            se = []
-            for s in disjunctor.split('or'):
-                s = s.strip()
-                isNegative = False
-                if 'not' in s:
-                    isNegative = True
-                    s = s[len('not ') : ]
+    def getSimpleExpression(self, string):
+        string = string.strip()
+        isNegative = False
+        if 'not' in string:
+            isNegative = True
+            string = string[len('not ') : ]
                 
-                match = re.match(r'(\w+){([^}]+)}', s)
-                name, params = match.group(1, 2)
-                params = [a.strip() for a in params.split(',')]
-                se.append(SimpleExpression(name, isNegative, params))
-            res.append(se)
-        return res
+        match = re.match(r'(\w+){([^}]+)}',string)
+        name, params = match.group(1, 2)
+        params = [a.strip() for a in params.split(',')]
+        se = SimpleExpression(name, isNegative, params)
+        return se
             
     def readFile(self, path):
-        self.allDisjunctionArr = []
         with open(path, 'r') as f:
+            line = f.readline().strip().split(';')
+            for element in line:
+                element = element.strip()
+                self.facts.append(self.getSimpleExpression(element))
+                
             read_goal = False
             for line in f:
                 line = line.strip()
                 if read_goal:
-                    goal = line
-                    line = f'not ({goal})'
+                    self.goal = self.getSimpleExpression(line.strip())
+                    break
                 if line == '----':
                     read_goal = True
                     continue
 
-                # print(line)
-                # print('cnf ', cnf)
-                self.allDisjunctionArr += self.getSimpleExpressions(cnf)
+                line = line.split('->')
+                line[0] = line[0].split('and')
+                for i in range(len(line[0])):
+                    line[0][i] = self.getSimpleExpression(line[0][i])
+                line[1] = self.getSimpleExpression(line[1])
+                self.expressions.append(line)
 
         assert read_goal
-        assert len(self.allDisjunctionArr) > 0
 
-        print('Список начальных дизъюнктов:')
-        print(self.allDisjunctionArr)
-        print()
-        return self.allDisjunctionArr
+        print('Список фактов:')
+        print(self.facts)
+        print('Список выражений:')
+        for ex in self.expressions:
+            print(ex)  
+        print('Цель:')      
+        print(self.goal)
+        return
+    
+    def compareExpressions(self, ex1, ex2):
+        res = -1
+        if ex1.name == ex2.name and ex1.isNegative == ex2.isNegative \
+            and len(ex1.params) == len(ex2.params):
+                res = 0
+                if ex1.params == ex2.params:
+                    res = 1
+        return res
 
     def unification(self, params1, params2, currentUnifDict):
         unif_dict = {}
@@ -92,10 +115,23 @@ class Resolution:
             unif_flag = False
         else:
             for i in range(len(params1)):
-                p1 = params1[i] if params1[i] not in currentUnifDict else currentUnifDict[params1[i]]
-                p2 = params2[i] if params2[i] not in currentUnifDict else currentUnifDict[params2[i]]
+                p1 = params1[i]
+                p2 = params2[i]
+                
+                
+                if p1 in unif_dict:
+                    p1 = unif_dict[p1]
+                elif p1 in currentUnifDict:
+                    p1 = currentUnifDict[p1]
+                
+                if p2 in unif_dict:
+                    p2 = unif_dict[p2]
+                elif p2 in currentUnifDict:
+                    p2 = currentUnifDict[p2]
+                    
                 if p1 == p2:
                     continue
+                
 
                 if 'C_' in p1 and 'C_' in p2:
                     unif_flag = False
@@ -122,13 +158,12 @@ class Resolution:
         return unif_flag
 
     
-    def resolutionRule(self, disjunctior1, disjunctior2, currentUnifDict, blockExpressions):
+    def searchRule(self, disjunctior1, disjunctior2, currentUnifDict, blockExpressions):
         resDisjunctor = None
         numExpressions = []
         for i in range(len(disjunctior1)):
             for j in range(len(disjunctior2)):
                 if [i, j] in blockExpressions:
-                    # print('AAAAAAAAAAAAAAAAAAAAAAaa', [i, j])
                     continue
 
                 if disjunctior1[i].name == disjunctior2[j].name and disjunctior1[i].isNegative ^ disjunctior2[j].isNegative:
@@ -177,109 +212,177 @@ class Resolution:
                 res = True
                 break
         return res
-        
+    
+    
     def run(self):
-        prev_len = 0
-        new_len = len(self.allDisjunctionArr)
-        begin_j = 0
-        emptyDisjunctor = False
-        iterationNumber = 1
+        root = Vertex(self.goal)
+        self.lov = [root]
         currentUnifDict = {}
-        stateStack = []
-        begin_j = 0
-        numIgnorDisjunctorsDict = collections.defaultdict(list)
-
-        while new_len > prev_len and not emptyDisjunctor:
-            prev_len = new_len
-            resArr = []
-            for i in range(0, len(self.allDisjunctionArr)):
-                for j in range(begin_j, len(self.allDisjunctionArr)):
-                    if i == j:
-                        continue
-                    prevAllDisjunctionArr = deepcopy(self.allDisjunctionArr)
-                    prevUnifDict = deepcopy(currentUnifDict)
-
-                    blockExpressions = []
-                    # print(numIgnorDisjunctorsDict)
-                    if (i, j) in numIgnorDisjunctorsDict:
-                        blockExpressions = numIgnorDisjunctorsDict[(i, j)]
-
-                    # print(blockExpressions)
-
-                    resDisjunctor, numExpressions = self.resolutionRule(self.allDisjunctionArr[i], self.allDisjunctionArr[j], currentUnifDict, blockExpressions)
-                    if resDisjunctor is not None:
-                        if len(resDisjunctor) == 0:
-                            emptyDisjunctor = True
-                            resArr.append(resDisjunctor)
-                            print(f'Итерация {iterationNumber}: применяем правило резолюции к дизъюнктам {self.allDisjunctionArr[i]} и {self.allDisjunctionArr[j]}')
-                            print('Унификатор: ', currentUnifDict)
-                            print(f'Получаем пустой дизъюнкт, следовательно выражение с отрицанием высказывания опровергнуто, следовательно само высказывание доказано')
-                            break
-                        elif not self.disjunctiorExists(self.allDisjunctionArr, resDisjunctor) and not self.disjunctiorExists(resArr, resDisjunctor):
-                            if currentUnifDict != prevUnifDict:
-                                stateStack.append([prevAllDisjunctionArr, prevUnifDict, (i, j), numExpressions, begin_j])
-                            print(f'Итерация {iterationNumber}: применяем правило резолюции к дизъюнктам {self.allDisjunctionArr[i]} и {self.allDisjunctionArr[j]}')
-                            print('Унификатор: ', currentUnifDict)
-                            print(f'резольвента = {resDisjunctor}')
-                            resArr.append(resDisjunctor)
-                            iterationNumber += 1
-                    # print(resDisjunctor)
-                if emptyDisjunctor:
+        self.stateStack = []
+        ignors = []
+        changeFlag = True
+        proved = True
+        while len(self.lov) > 0:
+            if not changeFlag:
+                if len(self.stateStack) > 0:
+                    currentUnifDict, root, self.lov, self.facts, ignorI = self.stateStack.pop()
+                    ignors.append(ignorI)
+                    print('Backtracking')
+                    print('Восстановленный СОВ:', self.lov)
+                else:
+                    proved = False
                     break
+                
+            changeFlag = False
+            current_element = self.lov[-1]
+            if len(current_element.childs) > 0:
+                solved = True
+                for child in current_element.childs:
+                    if not child.solved:
+                        solved = False
+                current_element.solved = solved   
+                self.facts.append(current_element.expression) 
+                
+            if current_element.solved:
+                print(f'{current_element} достижима')
+                self.lov.pop()
+                changeFlag = True
+                continue    
+                
+            for i in range(len(self.facts)):
+                if self.compareExpressions(current_element.expression, self.facts[i]) >= 0:
+                    if self.unification(current_element.expression.params, self.facts[i].params, currentUnifDict):        
+                        print(f'{current_element.expression} унифицируемо с фактом {self.facts[i]}')
+                        for expr in self.lov:
+                            for i in range(len(expr.expression.params)):
+                                if expr.expression.params[i] in currentUnifDict:
+                                    expr.expression.params[i] = currentUnifDict[expr.expression.params[i]]
+                        current_element.solved = True
+                        break
+                
+            if current_element.solved:
+                self.lov.pop()
+                changeFlag = True
+                continue
+            
+            for i in range(len(self.expressions)):
+                # if i == ignorI:
+                #     continue
+                ignore = False
+                for el in ignors:
+                    if self.compareExpressions(current_element.expression, el[1]) == 1 and i == el[0]:
+                        ignore = True
+                        ignors.pop()
+                        break
+                if ignore:
+                    continue
+                
+                if self.compareExpressions(current_element.expression, self.expressions[i][1]) >= 0:
+                    prevCurrentUnifDict = deepcopy(currentUnifDict)
+                    if self.unification(current_element.expression.params, self.expressions[i][1].params, currentUnifDict):
+                        print(f'Унификация с {self.expressions[i][1]}, унификатор = {currentUnifDict}')
+                        self.stateStack.append([prevCurrentUnifDict, deepcopy(root), deepcopy(self.lov), deepcopy(self.facts), [i, deepcopy(current_element.expression)] ])
+                        for expr in self.expressions[i][0]:
+                            new_expr = deepcopy(expr)
+                            for i in range(len(new_expr.params)):
+                                if new_expr.params[i] in currentUnifDict:
+                                    new_expr.params[i] = currentUnifDict[new_expr.params[i]]
+                            current_element.childs.append(Vertex(new_expr))
+                        currentUnifDict = {}
+                        self.lov += current_element.childs    
+                        changeFlag = True       
+                        break
+                
+            print('СОВ: ', self.lov)
+        print('СОВ: ', self.lov)
+        
+        if proved:
+            print('Цель достижима')
+        else:
+            print('Цель недостижима')
+    
+    # def run(self):
+    #     prev_len = 0
+    #     new_len = len(self.allDisjunctionArr)
+    #     begin_j = 0
+    #     emptyDisjunctor = False
+    #     iterationNumber = 1
+    #     currentUnifDict = {}
+    #     stateStack = []
+    #     begin_j = 0
+    #     numIgnorDisjunctorsDict = collections.defaultdict(list)
+
+    #     while new_len > prev_len and not emptyDisjunctor:
+    #         prev_len = new_len
+    #         resArr = []
+    #         for i in range(0, len(self.allDisjunctionArr)):
+    #             for j in range(begin_j, len(self.allDisjunctionArr)):
+    #                 if i == j:
+    #                     continue
+    #                 prevAllDisjunctionArr = deepcopy(self.allDisjunctionArr)
+    #                 prevUnifDict = deepcopy(currentUnifDict)
+
+    #                 blockExpressions = []
+    #                 # print(numIgnorDisjunctorsDict)
+    #                 if (i, j) in numIgnorDisjunctorsDict:
+    #                     blockExpressions = numIgnorDisjunctorsDict[(i, j)]
+
+    #                 # print(blockExpressions)
+
+    #                 resDisjunctor, numExpressions = self.searchRule(self.allDisjunctionArr[i], self.allDisjunctionArr[j], currentUnifDict, blockExpressions)
+    #                 if resDisjunctor is not None:
+    #                     if len(resDisjunctor) == 0:
+    #                         emptyDisjunctor = True
+    #                         resArr.append(resDisjunctor)
+    #                         print(f'Итерация {iterationNumber}: применяем правило резолюции к дизъюнктам {self.allDisjunctionArr[i]} и {self.allDisjunctionArr[j]}')
+    #                         print('Унификатор: ', currentUnifDict)
+    #                         print(f'Получаем пустой дизъюнкт, следовательно выражение с отрицанием высказывания опровергнуто, следовательно само высказывание доказано')
+    #                         break
+    #                     elif not self.disjunctiorExists(self.allDisjunctionArr, resDisjunctor) and not self.disjunctiorExists(resArr, resDisjunctor):
+    #                         if currentUnifDict != prevUnifDict:
+    #                             stateStack.append([prevAllDisjunctionArr, prevUnifDict, (i, j), numExpressions, begin_j])
+    #                         print(f'Итерация {iterationNumber}: применяем правило резолюции к дизъюнктам {self.allDisjunctionArr[i]} и {self.allDisjunctionArr[j]}')
+    #                         print('Унификатор: ', currentUnifDict)
+    #                         print(f'резольвента = {resDisjunctor}')
+    #                         resArr.append(resDisjunctor)
+    #                         iterationNumber += 1
+    #                 # print(resDisjunctor)
+    #             if emptyDisjunctor:
+    #                 break
                     
             
-            begin_j = len(self.allDisjunctionArr)
-            self.allDisjunctionArr += resArr
-            new_len = len(self.allDisjunctionArr)
+    #         begin_j = len(self.allDisjunctionArr)
+    #         self.allDisjunctionArr += resArr
+    #         new_len = len(self.allDisjunctionArr)
             
-            print('Обновленный список дизъюнктов:')
-            print(self.allDisjunctionArr)
+    #         print('Обновленный список дизъюнктов:')
+    #         print(self.allDisjunctionArr)
 
-            print('Унификаторы: ', currentUnifDict)
+    #         print('Унификаторы: ', currentUnifDict)
 
-            if new_len <= prev_len and not emptyDisjunctor and len(stateStack) > 0:
-                self.allDisjunctionArr, currentUnifDict, numIgnorDisjunctors, numIgnorExpressions, begin_j = stateStack.pop()
-                numIgnorDisjunctorsDict[numIgnorDisjunctors].append(numIgnorExpressions)
-                numIgnorDisjunctorsDict[(numIgnorDisjunctors[1], numIgnorDisjunctors[0])].append(numIgnorExpressions[::-1])
-                prev_len = 0
-                new_len = len(self.allDisjunctionArr)
-                print('\n\nBACKTRACKING')
-                print('Вернулись к списку дизъюнктов:')
-                print(self.allDisjunctionArr)
-                print('Вернулись к унификатору: ', currentUnifDict)
-                # print(numIgnorDisjunctorsDict)
+    #         if new_len <= prev_len and not emptyDisjunctor and len(stateStack) > 0:
+    #             self.allDisjunctionArr, currentUnifDict, numIgnorDisjunctors, numIgnorExpressions, begin_j = stateStack.pop()
+    #             numIgnorDisjunctorsDict[numIgnorDisjunctors].append(numIgnorExpressions)
+    #             numIgnorDisjunctorsDict[(numIgnorDisjunctors[1], numIgnorDisjunctors[0])].append(numIgnorExpressions[::-1])
+    #             prev_len = 0
+    #             new_len = len(self.allDisjunctionArr)
+    #             print('\n\nBACKTRACKING')
+    #             print('Вернулись к списку дизъюнктов:')
+    #             print(self.allDisjunctionArr)
+    #             print('Вернулись к унификатору: ', currentUnifDict)
+    #             # print(numIgnorDisjunctorsDict)
 
-        return emptyDisjunctor
+    #     return emptyDisjunctor
+
                     
 
 def main():
-    resolutionMethod = Resolution()
-    path_to_task = './files/task6.txt'
-    resolutionMethod.readFile(path_to_task)
-    ans = resolutionMethod.run()
-    print()
-    if ans:
-        print('Высказывание доказано')
-    else:
-        print('Высказывание опровергнуто')
+    searchMethod = SearchVars()
+    path_to_task = './files/task1.txt'
+    searchMethod.readFile(path_to_task)
+    searchMethod.run()
+    
 
 if __name__ == '__main__':
     main()
 
-
-
-# [-L (C_Эллен,y), -L (C_Тонни,C_дождь)] и [L (C_Тонни,C_дождь), L (C_Эллен,C_дождь)]
-# [-S (xxx), L (C_Тонни,C_снег)], [-L (C_Эллен,y), -L (C_Тонни,y)]
-
-
-# [[S (C_Тонни), M (C_Тонни)], 
-# [-L (C_Тонни,C_дождь), -M (C_Тонни)], 
-# [-S (xxx), L (C_Тонни,C_снег)], 
-# [-L (C_Эллен,y), -L (C_Тонни,y)], 
-# [L (C_Тонни,yy), L (C_Эллен,C_дождь)], 
-# [L (C_Тонни,C_дождь)], 
-# [L (C_Тонни,C_снег)], 
-# [-M (C_Тонни), S (C_Тонни)]]
-
-
-# Унификаторы:  {'xx': 'x', 'xxx': 'x', 'xxxx': 'x', 'x': 'C_Эллен', 'yy': 'C_дождь', 'y': 'C_снег'}

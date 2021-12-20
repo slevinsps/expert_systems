@@ -140,7 +140,7 @@ class Resolution:
 
 def main():
     resolutionMethod = Resolution()
-    path_to_task = './files/task1.txt'
+    path_to_task = './files/task2.txt'
     resolutionMethod.readFile(path_to_task)
     ans = resolutionMethod.run()
     print()

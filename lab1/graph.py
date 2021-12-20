@@ -23,8 +23,8 @@ class Vertex:
     def __init__(self):
         self.name = ''
         self.solved = False
-        self.childs = {}
-        self.parents = {}
+        self.childs = collections.defaultdict(list)
+        self.parents = collections.defaultdict(list)
         
     def __repr__(self):
         return self.name
@@ -58,39 +58,34 @@ class Graph:
 
         # сохранение вершин и правил перехода в графе
         for i in range(2, len(lines)):
-            # start - вершина в которую входит дуга от правила
+            # start - массив вершин, дуги, котрых входят в правило 
             # rule - правило перехода
-            # end - массив вершин, дуги, котрых входят в правило
+            # end - вершина в которую входит дуга от правила
             start, end = [d.strip() for d in lines[i].split(':')]
-            rule, end = [d.strip() for d in end.split(';')]
-            end = [d.strip() for d in end.split(',')]
+            rule, start = [d.strip() for d in start.split(';')]
+            start = [d.strip() for d in start.split(',')]
 
             vertex = None
-            if start not in self.name_vertex_dict: 
+            if end not in self.name_vertex_dict: 
                 # если встречена новая вершина, создать экземплар класса Vertex
                 vertex = Vertex()
-                vertex.name = start
-                vertex.childs[rule] = []
+                vertex.name = end
             else:
-                vertex = self.name_vertex_dict[start]
-                vertex.childs[rule] = []
+                vertex = self.name_vertex_dict[end]
             
             # добавить детей и родителей для каждой встреченной вершины
-            for e in end:
-                if e in self.name_vertex_dict:
-                    if rule not in self.name_vertex_dict[e].parents:
-                        self.name_vertex_dict[e].parents[rule] = []
-                    self.name_vertex_dict[e].parents[rule].append(vertex)
+            for s in start:
+                if s in self.name_vertex_dict:
+                    self.name_vertex_dict[s].childs[rule].append(vertex)
                 else:
                     vertex_end = Vertex()
-                    vertex_end.name = e
-                    vertex_end.parents[rule] = []
-                    vertex_end.parents[rule].append(vertex)
-                    self.name_vertex_dict[e] = vertex_end
+                    vertex_end.name = s
+                    vertex_end.childs[rule].append(vertex)
+                    self.name_vertex_dict[s] = vertex_end
 
-                vertex.childs[rule].append(self.name_vertex_dict[e])
+                vertex.parents[rule].append(self.name_vertex_dict[s])
                 
-            self.name_vertex_dict[start] = vertex        
+            self.name_vertex_dict[end] = vertex        
         return self.name_vertex_dict
     
     # визуализация прочитанного из файла дерева
@@ -100,11 +95,11 @@ class Graph:
     # получение примыкающих вершин переданной вершины
     def getChilds(self, vertex, from_data = False):
         vertex_arr = []
-        childs = vertex.childs
+        childs = vertex.parents
 
         if from_data:
             # если поиск идет от данных, то примыкающими будут считаться родительские вершины
-            childs = vertex.parents
+            childs = vertex.childs
 
         for rule in childs:
             for c in childs[rule]:
@@ -113,30 +108,14 @@ class Graph:
 
     # оповещение родительских вершин вершины vertex, что данная вершина решена
     # если все дочерние "И" вершины или хотя бы одна из дочерние "ИЛИ" вершин родительской вершины решены,
-    # то родительская вершина тоже помечается решенной
-    def propagate_solved(self, vertex):
-        solved_vertex = []
-        parents = vertex.parents
-        for rule in parents:
-            for v in parents[rule]:
-                childs = v.childs
-                for rule_c in childs:
-                    solved = True
-                    for c in childs[rule_c]:
-                        if not c.solved:
-                            solved = False
-                    if solved:
-                        v.solved = True
-                        solved_vertex.append(v)            
-        for v in solved_vertex:
-            self.propagate_solved(v)
+    
             
     def check_solved(self, vertex):
-        childs = vertex.childs
+        parents = vertex.parents
         res = False
-        for rule_c in childs:
+        for rule_c in parents:
             solved = True
-            for c in childs[rule_c]:
+            for c in parents[rule_c]:
                 if not c.solved:
                     solved = False
             if solved:
@@ -164,9 +143,6 @@ class Graph:
         while len(open_vertices) > 0:
             # извлекаем первую вершину
             v = open_vertices.popleft()
-            # if v in visited:
-            #     continue
-            # visited.add(v)
 
             if v.name in self.data:
                 # если она в массиве данных, то она решена
@@ -210,9 +186,6 @@ class Graph:
         for vertex in self.targets:
             res = res and self.name_vertex_dict[vertex].solved
 
-        # for n in self.name_vertex_dict:
-        #     print(self.name_vertex_dict[n].name, self.name_vertex_dict[n].solved)
-        
         if res:
             start = [self.name_vertex_dict[name] for name in self.targets]
             # отрисовка дерева решений

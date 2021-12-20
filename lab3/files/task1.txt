@@ -1,8 +1,7 @@
-O(C_N, C_M_); M(C_M_); A(C_W); E(C_N, C_A_) 
+O{C_N, C_M1}; M{C_M1}; A{C_W}; E{C_N, C_A1} 
+A{x} and W{y} and S{x, y, z} and H{z} -> C{x}
+M{x} and O{C_N, x} -> S{C_W, x, C_N}
+M{x} -> W{x}
+E{x, C_A1} -> H{x}
 ----
-A(x) and W(y) and S(x, y, z) and H(z) -> C(x)
-M(x) and O(C_N, x) -> S(C_W, x, C_N)
-M(x) -> W(x)
-E(x, C_A_) -> H(x)
-----
-C(w)
+C{C_W}

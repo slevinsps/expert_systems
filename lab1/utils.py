@@ -16,16 +16,16 @@ def get_nodes_edges(name_vertex_dict):
         nodes_color_map.append('black')
         nodes_shape_map.append('circle')
         
-        for rule in name_vertex_dict[name].childs:
+        for rule in name_vertex_dict[name].parents:
             
             
             add_edge = False
-            for c in name_vertex_dict[name].childs[rule]:
+            for c in name_vertex_dict[name].parents[rule]:
                 if c.name not in name_vertex_dict:
                     continue
                 add_edge = True
                 edges.append([rule, c.name])  
-                if len(name_vertex_dict[name].childs[rule]) > 1:
+                if len(name_vertex_dict[name].parents[rule]) > 1:
                     edges_color_map.append('red')  
                 else:
                     edges_color_map.append('black')  
@@ -74,17 +74,17 @@ def draw_res_tree(data, targets, start, file_name = 'graph.png'):
         if v.solved:
             vertex_copy = deepcopy(v)
             name_vertex_dict_res[v.name] = vertex_copy
-            rules = v.childs
+            rules = v.parents
             for key in rules:
                 solved = True
                 for c in rules[key]:
                     if not c.solved:
                         solved = False
                 if solved:
-                    vertex_copy.childs = {key: vertex_copy.childs[key]}
+                    vertex_copy.parents = {key: vertex_copy.parents[key]}
                     break
 
-            rules = vertex_copy.childs
+            rules = vertex_copy.parents
             for rule in rules:
                 for c in rules[rule]:
                     vertex_arr.append(c)
